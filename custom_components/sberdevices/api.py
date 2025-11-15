@@ -1,9 +1,8 @@
-# Файл: api.py (финальная версия)
+# Файл: api.py (ФИНАЛЬНАЯ ВЕРСИЯ)
 
 from datetime import datetime
 import tempfile
 from typing import List
-import functools
 
 from authlib.common.security import generate_token
 from authlib.integrations.httpx_client import AsyncOAuth2Client
@@ -47,16 +46,15 @@ EYVMxjh8zNbFuoc7fzvvrFILLe7ifvEIUqSVIC/AzplM/Jxw7buXFeGP1qVCBEHq
 391d/9RAfaZ12zkwFsl+IKwE/OZxW8AHa9i1p4GO0YSNuczzEm4=
 -----END CERTIFICATE-----"""
 
-def _create_temp_cert_and_get_path() -> str:
-    with tempfile.NamedTemporaryFile(delete=False, mode="wb", suffix=".cer") as temp:
-        temp.write(ROOT_CA)
-        return temp.name
+def _create_ssl_context_sync() -> SSLContext:
+    with tempfile.NamedTemporaryFile(delete=True, mode="wb", suffix=".cer") as temp_file:
+        temp_file.write(ROOT_CA)
+        temp_file.flush()
+        context = create_ssl_context(verify=temp_file.name)
+    return context
 
 async def async_create_sber_ssl_context(hass: HomeAssistant) -> SSLContext:
-    temp_path = await hass.async_add_executor_job(_create_temp_cert_and_get_path)
-    func = functools.partial(create_ssl_context, verify=temp_path)
-    context = await hass.async_add_executor_job(func)
-    return context
+    return await hass.async_add_executor_job(_create_ssl_context_sync)
 
 
 class SberAPI:
