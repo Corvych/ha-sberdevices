@@ -1,18 +1,18 @@
-# Файл: api.py (ФИНАЛЬНАЯ ВЕРСИЯ)
+# Файл: api.py (АБСОЛЮТНО ФИНАЛЬНАЯ ВЕРСИЯ v2)
 
 from datetime import datetime
-import tempfile
 from typing import List
+import ssl
 
 from authlib.common.security import generate_token
 from authlib.integrations.httpx_client import AsyncOAuth2Client
-from httpx import AsyncClient, create_ssl_context
+from httpx import AsyncClient, SSLConfig
 from ssl import SSLContext
 from homeassistant.core import HomeAssistant
 
 AUTH_ENDPOINT = "https://online.sberbank.ru/CSAFront/oidc/authorize.do"
 TOKEN_ENDPOINT = "https://online.sberbank.ru:4431/CSAFront/api/service/oidc/v3/token"
-ROOT_CA = b"""-----BEGIN CERTIFICATE-----
+ROOT_CA_STR = """-----BEGIN CERTIFICATE-----
 MIIFwjCCA6qgAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwcDELMAkGA1UEBhMCUlUx
 PzA9BgNVBAoMNlRoZSBNaW5pc3RyeSBvZiBEaWdpdGFsIERldmVsb3BtZW50IGFu
 ZCBDb21tdW5pY2F0aW9uczEgMB4GA1UEAwwXUnVzc2lhbiBUcnVzdGVkIFJvb3Qg
@@ -47,10 +47,7 @@ EYVMxjh8zNbFuoc7fzvvrFILLe7ifvEIUqSVIC/AzplM/Jxw7buXFeGP1qVCBEHq
 -----END CERTIFICATE-----"""
 
 def _create_ssl_context_sync() -> SSLContext:
-    with tempfile.NamedTemporaryFile(delete=True, mode="wb", suffix=".cer") as temp_file:
-        temp_file.write(ROOT_CA)
-        temp_file.flush()
-        context = create_ssl_context(verify=temp_file.name)
+    context = ssl.create_default_context(cadata=ROOT_CA_STR)
     return context
 
 async def async_create_sber_ssl_context(hass: HomeAssistant) -> SSLContext:
@@ -60,6 +57,8 @@ async def async_create_sber_ssl_context(hass: HomeAssistant) -> SSLContext:
 class SberAPI:
     def __init__(self, ssl_context: SSLContext, token: dict = None) -> None:
         self._verify_token = generate_token(64)
+        ssl_config = SSLConfig(ssl_context=ssl_context)
+        
         self._oauth_client = AsyncOAuth2Client(
             client_id="b1f0f0c6-fcb0-4ece-8374-6b614ebe3d42",
             authorization_endpoint=TOKEN_ENDPOINT,
@@ -69,7 +68,7 @@ class SberAPI:
             scope="openid",
             grant_type="authorization_code",
             token=token,
-            verify=ssl_context,
+            verify=ssl_config,
         )
 
     @property
