@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .api import HomeAPI, SberAPI
+from .api import HomeAPI, SberAPI, async_create_sber_ssl_context
 from .const import DOMAIN
 
 PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH]
@@ -16,7 +16,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})
 
-    sber = SberAPI(token=entry.data["token"])
+    ssl_context = await async_create_sber_ssl_context(hass)
+
+    sber = SberAPI(ssl_context=ssl_context, token=entry.data.get("token"))
     home = HomeAPI(sber)
     hass.data[DOMAIN][entry.entry_id] = {
         "sber": sber,

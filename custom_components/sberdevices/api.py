@@ -5,10 +5,11 @@ from typing import List
 from authlib.common.security import generate_token
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from httpx import AsyncClient, create_ssl_context
+from ssl import SSLContext
+from homeassistant.core import HomeAssistant
 
 AUTH_ENDPOINT = "https://online.sberbank.ru/CSAFront/oidc/authorize.do"
 TOKEN_ENDPOINT = "https://online.sberbank.ru:4431/CSAFront/api/service/oidc/v3/token"
-# min_cifra_root_ca.cer
 ROOT_CA = b"""-----BEGIN CERTIFICATE-----
 MIIFwjCCA6qgAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwcDELMAkGA1UEBhMCUlUx
 PzA9BgNVBAoMNlRoZSBNaW5pc3RyeSBvZiBEaWdpdGFsIERldmVsb3BtZW50IGFu
@@ -43,14 +44,19 @@ EYVMxjh8zNbFuoc7fzvvrFILLe7ifvEIUqSVIC/AzplM/Jxw7buXFeGP1qVCBEHq
 391d/9RAfaZ12zkwFsl+IKwE/OZxW8AHa9i1p4GO0YSNuczzEm4=
 -----END CERTIFICATE-----"""
 
-with tempfile.NamedTemporaryFile(delete_on_close=False) as temp:
-    temp.write(ROOT_CA)
-    temp.close()
-    context = create_ssl_context(verify=temp.name)
+def _create_temp_cert_and_get_path() -> str:
+    with tempfile.NamedTemporaryFile(delete=False, mode="wb", suffix=".cer") as temp:
+        temp.write(ROOT_CA)
+        return temp.name
+
+async def async_create_sber_ssl_context(hass: HomeAssistant) -> SSLContext:
+    temp_path = await hass.async_add_executor_job(_create_temp_cert_and_get_path)
+    context = await hass.async_add_executor_job(create_ssl_context, verify=temp_path)
+    return context
 
 
 class SberAPI:
-    def __init__(self, token: dict = None) -> None:
+    def __init__(self, ssl_context: SSLContext, token: dict = None) -> None:
         self._verify_token = generate_token(64)
         self._oauth_client = AsyncOAuth2Client(
             client_id="b1f0f0c6-fcb0-4ece-8374-6b614ebe3d42",
@@ -61,7 +67,7 @@ class SberAPI:
             scope="openid",
             grant_type="authorization_code",
             token=token,
-            verify=context,
+            verify=ssl_context,
         )
 
     @property
@@ -124,7 +130,6 @@ class HomeAPI:
         obj = res.json()
         if res.status_code != 200:
             code = obj["code"]
-            # dead token xd
             if code == 16:
                 self._token_alive = False
                 if retry:
@@ -135,10 +140,8 @@ class HomeAPI:
 
     async def get_device_tree(self) -> dict[str, any]:
         a = (await self.request("GET", "/device_groups/tree"))["result"]
-        # print(a)
         return a
 
-    # Cache
     async def update_devices_cache(self):
         device_data = await self.get_device_tree()
         self._cached_devices = extract_devices(device_data)
@@ -159,11 +162,10 @@ class HomeAPI:
                 "device_id": device_id,
                 "desired_state": state,
                 "timestamp": datetime.now().isoformat()
-                + "Z",  # 2023-12-01T17:00:35.537Z
+                + "Z",
             },
         )
 
-        # Merge
         for state_val in state:
             for attribute in self._cached_devices[device_id]["desired_state"]:
                 if attribute["key"] == state_val["key"]:
