@@ -112,10 +112,11 @@ class SberAPI:
 
 
 class HomeAPI:
-    def __init__(self, sber: SberAPI) -> None:
+    def __init__(self, sber: SberAPI, ssl_context: SSLContext) -> None:
         self._sber = sber
         self._client = AsyncClient(
             base_url="https://gateway.iot.sberdevices.ru/gateway/v1",
+            verify=ssl_context
         )
         self._token_alive = False
         self._cached_devices = {}
@@ -128,7 +129,7 @@ class HomeAPI:
         if token is not None:
             self._client.headers.update({"X-AUTH-jwt": token})
             self._token_alive = True
-
+    
     async def request(
         self, method: str, url: str, retry: bool = True, **kwargs
     ) -> dict[str, any]:

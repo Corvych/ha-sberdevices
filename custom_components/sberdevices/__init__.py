@@ -19,7 +19,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     ssl_context = await async_create_sber_ssl_context(hass)
 
     sber = SberAPI(ssl_context=ssl_context, token=entry.data.get("token"))
-    home = HomeAPI(sber)
+    home = HomeAPI(sber, ssl_context=ssl_context)
     hass.data[DOMAIN][entry.entry_id] = {
         "sber": sber,
         "home": home,
