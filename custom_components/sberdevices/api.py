@@ -1,6 +1,9 @@
+# Файл: api.py (финальная версия)
+
 from datetime import datetime
 import tempfile
 from typing import List
+import functools
 
 from authlib.common.security import generate_token
 from authlib.integrations.httpx_client import AsyncOAuth2Client
@@ -30,7 +33,7 @@ BLa52/dSwNU4WWLubaYSiAmA9IUMX1/RpfpxOxd4Ykmhz97oFbUaDJFipIggx5sX
 ePAlkTdWnv+RWBxlJwMQ25oEHmRguNYf4Zr/Rxr9cS93Y+mdXIZaBEE0KS2iLRqa
 OiWBki9IMQU4phqPOBAaG7A+eP8PAgMBAAGjZjBkMB0GA1UdDgQWBBTh0YHlzlpf
 BKrS6badZrHF+qwshzAfBgNVHSMEGDAWgBTh0YHlzlpfBKrS6badZrHF+qwshzAS
-BgNVHRMBAf8ECDAGAQH/AgEEMA4GA1UdDwEB/wQEAwIBhjANBgkqhkiG9w0BAQsF
+BgNVHRMBAf8ECDAGAQH/AgEEMA4GA1UdDwEB/wQEAwIBhjANBgkqhkiGw0BAQsF
 AAOCAgEAALIY1wkilt/urfEVM5vKzr6utOeDWCUczmWX/RX4ljpRdgF+5fAIS4vH
 tmXkqpSCOVeWUrJV9QvZn6L227ZwuE15cWi8DCDal3Ue90WgAJJZMfTshN4OI8cq
 W9E4EG9wglbEtMnObHlms8F3CHmrw3k6KmUkWGoa+/ENmcVl68u/cMRl1JbW2bM+
@@ -51,7 +54,8 @@ def _create_temp_cert_and_get_path() -> str:
 
 async def async_create_sber_ssl_context(hass: HomeAssistant) -> SSLContext:
     temp_path = await hass.async_add_executor_job(_create_temp_cert_and_get_path)
-    context = await hass.async_add_executor_job(create_ssl_context, verify=temp_path)
+    func = functools.partial(create_ssl_context, verify=temp_path)
+    context = await hass.async_add_executor_job(func)
     return context
 
 
