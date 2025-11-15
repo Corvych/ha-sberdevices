@@ -1,5 +1,3 @@
-# Файл: api.py (ОКОНЧАТЕЛЬНАЯ ВЕРСИЯ)
-
 from datetime import datetime
 from typing import List
 import ssl
