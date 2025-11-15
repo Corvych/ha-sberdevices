@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import List
 import ssl
+import tempfile
+import certifi
 
 from authlib.common.security import generate_token
 from authlib.integrations.httpx_client import AsyncOAuth2Client
@@ -10,7 +12,8 @@ from homeassistant.core import HomeAssistant
 
 AUTH_ENDPOINT = "https://online.sberbank.ru/CSAFront/oidc/authorize.do"
 TOKEN_ENDPOINT = "https://online.sberbank.ru:4431/CSAFront/api/service/oidc/v3/token"
-ROOT_CA_STR = b"""-----BEGIN CERTIFICATE-----
+
+ROOT_CA = b"""-----BEGIN CERTIFICATE-----
 MIIFwjCCA6qgAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwcDELMAkGA1UEBhMCUlUx
 PzA9BgNVBAoMNlRoZSBNaW5pc3RyeSBvZiBEaWdpdGFsIERldmVsb3BtZW50IGFu
 ZCBDb21tdW5pY2F0aW9uczEgMB4GA1UEAwwXUnVzc2lhbiBUcnVzdGVkIFJvb3Qg
@@ -45,7 +48,14 @@ EYVMxjh8zNbFuoc7fzvvrFILLe7ifvEIUqSVIC/AzplM/Jxw7buXFeGP1qVCBEHq
 -----END CERTIFICATE-----"""
 
 def _create_ssl_context_sync() -> SSLContext:
-    context = ssl.create_default_context(cadata=ROOT_CA_STR)
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="ascii") as temp_ca_bundle:
+        with open(certifi.where(), "r", encoding="ascii") as certifi_file:
+            standard_cas = certifi_file.read()
+        temp_ca_bundle.write(standard_cas)
+        temp_ca_bundle.write("\n")
+        temp_ca_bundle.write(ROOT_CA.decode("ascii"))
+        bundle_path = temp_ca_bundle.name
+    context = ssl.create_default_context(cafile=bundle_path)
     return context
 
 async def async_create_sber_ssl_context(hass: HomeAssistant) -> SSLContext:
@@ -67,7 +77,7 @@ class SberAPI:
             token=token,
             verify=ssl_context,
         )
-
+    
     @property
     def token(self) -> dict[str, any]:
         return self._oauth_client.token
