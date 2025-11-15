@@ -1,4 +1,4 @@
-# Файл: api.py (АБСОЛЮТНО ФИНАЛЬНАЯ ВЕРСИЯ v2)
+# Файл: api.py (ОКОНЧАТЕЛЬНАЯ ВЕРСИЯ)
 
 from datetime import datetime
 from typing import List
@@ -6,7 +6,7 @@ import ssl
 
 from authlib.common.security import generate_token
 from authlib.integrations.httpx_client import AsyncOAuth2Client
-from httpx import AsyncClient, SSLConfig
+from httpx import AsyncClient
 from ssl import SSLContext
 from homeassistant.core import HomeAssistant
 
@@ -57,7 +57,6 @@ async def async_create_sber_ssl_context(hass: HomeAssistant) -> SSLContext:
 class SberAPI:
     def __init__(self, ssl_context: SSLContext, token: dict = None) -> None:
         self._verify_token = generate_token(64)
-        ssl_config = SSLConfig(ssl_context=ssl_context)
         
         self._oauth_client = AsyncOAuth2Client(
             client_id="b1f0f0c6-fcb0-4ece-8374-6b614ebe3d42",
@@ -68,7 +67,7 @@ class SberAPI:
             scope="openid",
             grant_type="authorization_code",
             token=token,
-            verify=ssl_config,
+            verify=ssl_context,
         )
 
     @property
